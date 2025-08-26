@@ -17,13 +17,16 @@ data class ObligationView(
     val quantities: QuantitiesC
 )
 
-class SettlementEngine {
+class SettlementEngine : Engine {
     private val world = configureWorld {}
     private val obligations = world.family { all(IdentityC, MatchingKeyC, LifecycleC, QuantitiesC) }
     private val statusEvents = world.family { all(ParsedStatusC, CandidateKeyC) }
     private val outboxEvents = mutableListOf<DomainEvent>()
     
-    fun createObligation(
+    // Workaround for testing until getObligation compiler issue is fixed
+    internal val obligationsForTesting get() = obligations
+    
+    override fun createObligation(
         id: String,
         venue: String,
         isin: String,
@@ -43,7 +46,7 @@ class SettlementEngine {
         return entity.id
     }
     
-    fun ingestStatus(
+    override fun ingestStatus(
         msgId: String,
         seq: Long,
         code: CanonCode,
@@ -59,7 +62,7 @@ class SettlementEngine {
         }
     }
     
-    fun tick() {
+    override fun tick() {
         // DedupSystem: Process status events for deduplication and correlation
         dedupSystem()
         
@@ -148,20 +151,13 @@ class SettlementEngine {
             val processed = statusEntity[ProcessedStatusC]
             
             // Find the obligation entity by ID
-            var obligationEntity: Entity? = null
-            obligations.forEach { entity ->
-                if (entity.id == processed.obligationEntityId) {
-                    obligationEntity = entity
-                    return@forEach
-                }
-            }
-            
+            val obligationEntity = findEntity(processed.obligationEntityId)
             if (obligationEntity != null) {
                 // Update correlation
-                obligationEntity!![CorrelationC].lastStatusEventId = statusEntity.id.toString()
+                obligationEntity[CorrelationC].lastStatusEventId = statusEntity.id.toString()
                 
                 // Update CSD status
-                val csdStatus = obligationEntity!![CsdStatusC]
+                val csdStatus = obligationEntity[CsdStatusC]
                 csdStatus.lastCode = statusEvent.code
                 csdStatus.lastMsgId = statusEvent.msgId
                 csdStatus.lastSeq = statusEvent.seq
@@ -181,62 +177,56 @@ class SettlementEngine {
             val correlated = statusEntity[CorrelatedStatusC]
             
             // Find the obligation entity by ID
-            var obligationEntity: Entity? = null
-            obligations.forEach { entity ->
-                if (entity.id == correlated.obligationEntityId) {
-                    obligationEntity = entity
-                    return@forEach
-                }
-            }
-            
-            if (obligationEntity == null) return@forEach
-            val identity = obligationEntity!![IdentityC]
-            val lifecycle = obligationEntity!![LifecycleC]
-            val quantities = obligationEntity!![QuantitiesC]
-            
-            // Handle lifecycle transition  
-            val oldState = lifecycle.state
-            val newState = when (statusEvent.code) {
-                CanonCode.ACK -> LifecycleState.New
-                CanonCode.MATCHED -> LifecycleState.Matched
-                CanonCode.PARTIAL_SETTLED -> {
-                    quantities.settledQty += statusEvent.qty
-                    quantities.remainingQty = quantities.intendedQty - quantities.settledQty
-                    
-                    if (quantities.settledQty >= quantities.intendedQty) {
+            val obligationEntity = findEntity(correlated.obligationEntityId)
+            if (obligationEntity != null) {
+                val identity = obligationEntity[IdentityC]
+                val lifecycle = obligationEntity[LifecycleC]
+                val quantities = obligationEntity[QuantitiesC]
+        
+                // Handle lifecycle transition  
+                val oldState = lifecycle.state
+                val newState = when (statusEvent.code) {
+                    CanonCode.ACK -> LifecycleState.New
+                    CanonCode.MATCHED -> LifecycleState.Matched
+                    CanonCode.PARTIAL_SETTLED -> {
+                        quantities.settledQty += statusEvent.qty
+                        quantities.remainingQty = quantities.intendedQty - quantities.settledQty
+                        
+                        if (quantities.settledQty >= quantities.intendedQty) {
+                            LifecycleState.Settled
+                        } else {
+                            LifecycleState.PartiallySettled
+                        }
+                    }
+                    CanonCode.SETTLED -> {
+                        quantities.settledQty = quantities.intendedQty
+                        quantities.remainingQty = 0L
                         LifecycleState.Settled
-                    } else {
-                        LifecycleState.PartiallySettled
                     }
                 }
-                CanonCode.SETTLED -> {
-                    quantities.settledQty = quantities.intendedQty
-                    quantities.remainingQty = 0L
-                    LifecycleState.Settled
-                }
-            }
-            
-            // Always emit events for meaningful changes
-            val shouldEmitEvent = when (statusEvent.code) {
-                CanonCode.PARTIAL_SETTLED, CanonCode.SETTLED -> true
-                else -> oldState != newState
-            }
-            
-            if (shouldEmitEvent) {
-                lifecycle.state = newState
                 
-                outboxEvents.add(DomainEvent.StateChanged(
-                    obligationId = identity.obligationId,
-                    from = oldState,
-                    to = newState,
-                    settledQty = quantities.settledQty,
-                    remainingQty = quantities.remainingQty,
-                    msgId = statusEvent.msgId,
-                    seq = statusEvent.seq,
-                    at = statusEvent.at
-                ))
-            } else if (oldState != newState) {
-                lifecycle.state = newState
+                // Always emit events for meaningful changes
+                val shouldEmitEvent = when (statusEvent.code) {
+                    CanonCode.PARTIAL_SETTLED, CanonCode.SETTLED -> true
+                    else -> oldState != newState
+                }
+                
+                if (shouldEmitEvent) {
+                    lifecycle.state = newState
+                    
+                    outboxEvents.add(DomainEvent.StateChanged(
+                        obligationId = identity.obligationId,
+                        from = oldState,
+                        to = newState,
+                        settledQty = quantities.settledQty,
+                        remainingQty = quantities.remainingQty,
+                        msgId = statusEvent.msgId,
+                        seq = statusEvent.seq,
+                        at = statusEvent.at
+                    ))
+                } else if (oldState != newState) {
+                    lifecycle.state = newState
+                }
             }
         }
     }
@@ -248,7 +238,7 @@ class SettlementEngine {
         }
     }
     
-    fun outbox(): List<DomainEvent> {
+    override fun outbox(): List<DomainEvent> {
         return outboxEvents.toList()
     }
     
@@ -256,25 +246,36 @@ class SettlementEngine {
         outboxEvents.clear()
     }
     
-    fun getObligation(entityId: Int): Result<ObligationView> {
-        return try {
-            var foundView: ObligationView? = null
-            obligations.forEach { entity ->
-                if (entity.id == entityId) {
-                    foundView = ObligationView(
-                        identity = entity[IdentityC],
-                        matchingKey = entity[MatchingKeyC],
-                        lifecycle = entity[LifecycleC],
-                        quantities = entity[QuantitiesC]
-                    )
-                    return@forEach
-                }
+    private fun findEntity(entityId: Int): Entity? {
+        var foundEntity: Entity? = null
+        obligations.forEach { entity ->
+            if (entity.id == entityId) {
+                foundEntity = entity
+                return@forEach
             }
-            foundView?.let { Result.success(it) } 
-                ?: Result.failure(NoSuchElementException("Obligation with ID $entityId not found"))
-        } catch (e: Exception) {
-            Result.failure(e)
         }
+        return foundEntity
+    }
+    
+    fun getObligation(entityId: Int): Result<ObligationView> {
+        var view: ObligationView? = null
+        obligations.forEach { e ->
+            if (e.id == entityId) {
+                val identity = e[IdentityC]
+                val matchingKey = e[MatchingKeyC]
+                val lifecycle = e[LifecycleC]
+                val quantities = e[QuantitiesC]
+                view = ObligationView(
+                    identity = identity,
+                    matchingKey = matchingKey,
+                    lifecycle = lifecycle,
+                    quantities = quantities
+                )
+                return@forEach
+            }
+        }
+        return view?.let { Result.success(it) }
+            ?: Result.failure(NoSuchElementException("Obligation entity $entityId not found"))
     }
 }
 

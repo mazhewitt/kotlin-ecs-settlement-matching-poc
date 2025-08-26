@@ -396,5 +396,137 @@ class SettlementEngineTest : DescribeSpec({
             duplicateEvent.msgId shouldBe "MSG001"
             duplicateEvent.seq shouldBe 1L
         }
+
+        it("outOfOrderEventIsIgnoredAndEmitsOutOfOrderIgnored") {
+            val engine = SettlementEngine()
+            engine.clearOutbox()
+
+            val obligationId = engine.createObligation(
+                id = "OBL005",
+                venue = "NYSE",
+                isin = "US0000000001",
+                account = "ACC999",
+                settleDate = LocalDate(2024, 1, 16),
+                intendedQty = 100L
+            )
+
+            // First process a high sequence
+            engine.ingestStatus(
+                msgId = "MSG010",
+                seq = 10L,
+                code = org.example.settlement.domain.CanonCode.MATCHED,
+                isin = "US0000000001",
+                account = "ACC999",
+                settleDate = LocalDate(2024, 1, 16),
+                qty = 100L,
+                at = kotlinx.datetime.Clock.System.now()
+            )
+            engine.tick()
+
+            // Now send an out-of-order lower sequence
+            engine.ingestStatus(
+                msgId = "MSG009",
+                seq = 9L,
+                code = org.example.settlement.domain.CanonCode.PARTIAL_SETTLED,
+                isin = "US0000000001",
+                account = "ACC999",
+                settleDate = LocalDate(2024, 1, 16),
+                qty = 10L,
+                at = kotlinx.datetime.Clock.System.now()
+            )
+            engine.tick()
+
+            // State remains Matched, quantities unchanged
+            val after = engine.getObligation(obligationId)
+            after.fold(
+                onSuccess = { view ->
+                    view.lifecycle.state shouldBe LifecycleState.Matched
+                    view.quantities.settledQty shouldBe 0L
+                    view.quantities.remainingQty shouldBe 100L
+                },
+                onFailure = { throw AssertionError("Expected obligation to be found", it) }
+            )
+
+            // One OutOfOrderIgnored event emitted
+            val events = engine.outbox()
+            val outOfOrder = events.filterIsInstance<org.example.settlement.domain.DomainEvent.OutOfOrderIgnored>()
+            outOfOrder.size shouldBe 1
+            outOfOrder.first().let { evt ->
+                evt.obligationId shouldBe "OBL005"
+                evt.lastSeq shouldBe 10L
+                evt.msgId shouldBe "MSG009"
+                evt.seq shouldBe 9L
+            }
+        }
+
+        it("noMatchingObligationEmitsNoMatch") {
+            val engine = SettlementEngine()
+            engine.clearOutbox()
+
+            // No obligations created. Ingest an event.
+            engine.ingestStatus(
+                msgId = "MSG100",
+                seq = 1L,
+                code = org.example.settlement.domain.CanonCode.MATCHED,
+                isin = "US1111111111",
+                account = "ACC111",
+                settleDate = LocalDate(2024, 2, 1),
+                qty = 50L,
+                at = kotlinx.datetime.Clock.System.now()
+            )
+            engine.tick()
+
+            val events = engine.outbox()
+            val noMatchEvents = events.filterIsInstance<org.example.settlement.domain.DomainEvent.NoMatch>()
+            noMatchEvents.size shouldBe 1
+            noMatchEvents.first().apply {
+                msgId shouldBe "MSG100"
+                seq shouldBe 1L
+                key shouldBe "US1111111111-ACC111-2024-02-01"
+            }
+        }
+
+        it("replayIsDeterministicForSameInputSequence") {
+            fun runScenario(): Pair<List<org.example.settlement.domain.DomainEvent>, ObligationView> {
+                val engine = SettlementEngine()
+                val id = engine.createObligation(
+                    id = "OBLDET",
+                    venue = "LSE",
+                    isin = "US2222222222",
+                    account = "ACC222",
+                    settleDate = LocalDate(2024, 3, 1),
+                    intendedQty = 100L
+                )
+
+                // Deterministic input sequence
+                val t1 = kotlinx.datetime.Instant.parse("2024-03-01T00:00:00Z")
+                val t2 = kotlinx.datetime.Instant.parse("2024-03-01T00:00:10Z")
+                val t3 = kotlinx.datetime.Instant.parse("2024-03-01T00:00:20Z")
+                val t4 = kotlinx.datetime.Instant.parse("2024-03-01T00:00:30Z")
+                engine.ingestStatus("M1", 1, org.example.settlement.domain.CanonCode.MATCHED, "US2222222222", "ACC222", LocalDate(2024, 3, 1), 100, t1)
+                engine.tick()
+                engine.ingestStatus("M2", 2, org.example.settlement.domain.CanonCode.PARTIAL_SETTLED, "US2222222222", "ACC222", LocalDate(2024, 3, 1), 30, t2)
+                engine.tick()
+                engine.ingestStatus("M3", 3, org.example.settlement.domain.CanonCode.PARTIAL_SETTLED, "US2222222222", "ACC222", LocalDate(2024, 3, 1), 20, t3)
+                engine.tick()
+                engine.ingestStatus("M4", 4, org.example.settlement.domain.CanonCode.SETTLED, "US2222222222", "ACC222", LocalDate(2024, 3, 1), 50, t4)
+                engine.tick()
+
+                val view = engine.getObligation(id).getOrThrow()
+                return engine.outbox() to view
+            }
+
+            val (outbox1, view1) = runScenario()
+            val (outbox2, view2) = runScenario()
+
+            // Outbox event streams should be identical
+            outbox1 shouldBe outbox2
+
+            // Final state should be identical
+            view1.lifecycle.state shouldBe view2.lifecycle.state
+            view1.quantities.intendedQty shouldBe view2.quantities.intendedQty
+            view1.quantities.settledQty shouldBe view2.quantities.settledQty
+            view1.quantities.remainingQty shouldBe view2.quantities.remainingQty
+        }
     }
 })
