@@ -8,6 +8,7 @@ import kotlinx.datetime.LocalDate
 import org.example.settlement.SettlementEngine
 import org.example.settlement.domain.CanonCode
 import org.example.settlement.matching.*
+import org.example.settlement.profiledExecution
 import java.nio.file.Paths
 import kotlin.system.exitProcess
 
@@ -21,44 +22,69 @@ import kotlin.system.exitProcess
  *  - ./runtime/status.txt (output)
  */
 fun main() {
+    val isBenchmarkMode = System.getenv("BENCHMARK_MODE") == "true"
+    
+    if (isBenchmarkMode) {
+        runBenchmarkMode()
+    } else {
+        runContinuousMode()
+    }
+}
+
+fun runBenchmarkMode() {
     // Resolve runtime dir at project root even if current working dir is the app module.
     val cwd = Paths.get("").toAbsolutePath()
     val base = if (cwd.fileName.toString() == "app") cwd.parent.resolve("runtime") else cwd.resolve("runtime")
-    val bankIn = FileLineInQueue(
-        base.resolve("bank.txt")
-    ) { line ->
-        // very naive CSV: id,venue,isin,account,settleDate,intendedQty
-        val parts = line.split(",")
-        if (parts.size < 6) return@FileLineInQueue null
-        MatchingEngine.BankUpdate(
-            obligationId = parts[0].trim(),
-            venue = parts[1].trim(),
-            isin = parts[2].trim(),
-            account = parts[3].trim(),
-            settleDate = LocalDate.parse(parts[4].trim()),
-            intendedQty = parts[5].trim().toLong()
-        )
+    
+    val bankIn = FileLineInQueue(base.resolve("bank.txt")) { line ->
+        parseBankLine(line)
     }
-    val marketIn = FileLineInQueue(
-        base.resolve("market.txt")
-    ) { line ->
-        // naive CSV: msgId,seq,code,isin,account,settleDate,qty,at
-        val p = line.split(",")
-        if (p.size < 8) return@FileLineInQueue null
-        MatchingEngine.MarketUpdate(
-            msgId = p[0].trim(),
-            seq = p[1].trim().toLong(),
-            code = CanonCode.valueOf(p[2].trim()),
-            isin = p[3].trim(),
-            account = p[4].trim(),
-            settleDate = LocalDate.parse(p[5].trim()),
-            qty = p[6].trim().toLong(),
-            at = Instant.parse(p[7].trim())
-        )
+    val marketIn = FileLineInQueue(base.resolve("market.txt")) { line ->
+        parseMarketLine(line)
     }
-    val statusOut = FileLineOutQueue(
-        base.resolve("status.txt")
-    ) { s: MatchingEngine.StatusIndication -> s.summary }
+    val statusOut = FileLineOutQueue(base.resolve("status.txt")) { s: MatchingEngine.StatusIndication -> 
+        s.summary 
+    }
+
+    val engine = SettlementEngine()
+    val orchestrator = MatchingEngine(engine, bankIn, marketIn, statusOut)
+
+    // Process all data once with profiling
+    val totalEvents = bankIn.size() + marketIn.size()
+    val (_, metrics) = profiledExecution(
+        operationCount = totalEvents,
+        peakEntityCounter = { engine.obligationsForTesting.numEntities }
+    ) { profiler ->
+        // Process until all queues are empty
+        while (bankIn.hasMore() || marketIn.hasMore()) {
+            orchestrator.processOnce()
+            profiler.updatePeakEntities(engine.obligationsForTesting.numEntities)
+        }
+        
+        // Final processing to flush any remaining events
+        repeat(3) {
+            orchestrator.processOnce()
+        }
+    }
+
+    // Output metrics for Python to parse
+    println("BENCHMARK_METRICS: duration_ms=${metrics.durationMs}, throughput=${metrics.throughputOpsPerSec}, memory_mb=${metrics.memoryUsedMb}, gc_time_ms=${metrics.gcTimeMs}, peak_entities=${metrics.peakEntities}")
+}
+
+fun runContinuousMode() {
+    // Resolve runtime dir at project root even if current working dir is the app module.
+    val cwd = Paths.get("").toAbsolutePath()
+    val base = if (cwd.fileName.toString() == "app") cwd.parent.resolve("runtime") else cwd.resolve("runtime")
+    
+    val bankIn = FileLineInQueue(base.resolve("bank.txt")) { line ->
+        parseBankLine(line)
+    }
+    val marketIn = FileLineInQueue(base.resolve("market.txt")) { line ->
+        parseMarketLine(line)
+    }
+    val statusOut = FileLineOutQueue(base.resolve("status.txt")) { s: MatchingEngine.StatusIndication -> 
+        s.summary 
+    }
 
     val engine = SettlementEngine()
     val orchestrator = MatchingEngine(engine, bankIn, marketIn, statusOut)
@@ -68,4 +94,34 @@ fun main() {
         orchestrator.processOnce()
         Thread.sleep(100) // light polling
     }
+}
+
+private fun parseBankLine(line: String): MatchingEngine.BankUpdate? {
+    // very naive CSV: id,venue,isin,account,settleDate,intendedQty
+    val parts = line.split(",")
+    if (parts.size < 6) return null
+    return MatchingEngine.BankUpdate(
+        obligationId = parts[0].trim(),
+        venue = parts[1].trim(),
+        isin = parts[2].trim(),
+        account = parts[3].trim(),
+        settleDate = LocalDate.parse(parts[4].trim()),
+        intendedQty = parts[5].trim().toLong()
+    )
+}
+
+private fun parseMarketLine(line: String): MatchingEngine.MarketUpdate? {
+    // naive CSV: msgId,seq,code,isin,account,settleDate,qty,at
+    val p = line.split(",")
+    if (p.size < 8) return null
+    return MatchingEngine.MarketUpdate(
+        msgId = p[0].trim(),
+        seq = p[1].trim().toLong(),
+        code = CanonCode.valueOf(p[2].trim()),
+        isin = p[3].trim(),
+        account = p[4].trim(),
+        settleDate = LocalDate.parse(p[5].trim()),
+        qty = p[6].trim().toLong(),
+        at = Instant.parse(p[7].trim())
+    )
 }

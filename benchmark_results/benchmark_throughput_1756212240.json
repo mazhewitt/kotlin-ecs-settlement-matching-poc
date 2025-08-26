@@ -1,0 +1,82 @@
+{
+  "config": {
+    "name": "throughput",
+    "description": "Throughput test: many events per obligation",
+    "num_obligations": 500,
+    "num_status_events": 5000,
+    "num_duplicates": 100,
+    "num_unmatches": 50,
+    "warmup_iterations": 3,
+    "measurement_iterations": 5,
+    "timeout_sec": 60.0
+  },
+  "metrics": [
+    {
+      "scenario_name": "throughput",
+      "obligations_count": 500,
+      "status_events_count": 5000,
+      "duration_ms": 761.0958340083016,
+      "throughput_ops_per_sec": 6569.4749288897865,
+      "memory_used_mb": 6.9947052001953125,
+      "gc_time_ms": 3.0,
+      "cpu_time_ms": 294.0,
+      "peak_entities": 500
+    },
+    {
+      "scenario_name": "throughput",
+      "obligations_count": 500,
+      "status_events_count": 5000,
+      "duration_ms": 764.0388750005513,
+      "throughput_ops_per_sec": 6544.16962748969,
+      "memory_used_mb": 7.174278259277344,
+      "gc_time_ms": 3.0,
+      "cpu_time_ms": 296.0,
+      "peak_entities": 500
+    },
+    {
+      "scenario_name": "throughput",
+      "obligations_count": 500,
+      "status_events_count": 5000,
+      "duration_ms": 774.4007080036681,
+      "throughput_ops_per_sec": 6456.605667225599,
+      "memory_used_mb": 7.171516418457031,
+      "gc_time_ms": 3.0,
+      "cpu_time_ms": 316.0,
+      "peak_entities": 500
+    },
+    {
+      "scenario_name": "throughput",
+      "obligations_count": 500,
+      "status_events_count": 5000,
+      "duration_ms": 774.5114999997895,
+      "throughput_ops_per_sec": 6455.6820654068515,
+      "memory_used_mb": 7.133628845214844,
+      "gc_time_ms": 3.0,
+      "cpu_time_ms": 299.0,
+      "peak_entities": 500
+    },
+    {
+      "scenario_name": "throughput",
+      "obligations_count": 500,
+      "status_events_count": 5000,
+      "duration_ms": 774.4668329978595,
+      "throughput_ops_per_sec": 6456.054393763586,
+      "memory_used_mb": 7.0506591796875,
+      "gc_time_ms": 3.0,
+      "cpu_time_ms": 306.0,
+      "peak_entities": 500
+    }
+  ],
+  "mean_metrics": {
+    "scenario_name": "throughput",
+    "obligations_count": 500,
+    "status_events_count": 5000,
+    "duration_ms": 769.702750002034,
+    "throughput_ops_per_sec": 6496.397336555103,
+    "memory_used_mb": 7.104957580566406,
+    "gc_time_ms": 3.0,
+    "cpu_time_ms": 302.2,
+    "peak_entities": 500
+  },
+  "timestamp": "2025-08-26T14:44:00.797751"
+}

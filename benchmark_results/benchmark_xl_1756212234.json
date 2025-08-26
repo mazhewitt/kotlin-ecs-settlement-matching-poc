@@ -1,0 +1,49 @@
+{
+  "config": {
+    "name": "xl",
+    "description": "Extra large: stress test for scalability limits",
+    "num_obligations": 10000,
+    "num_status_events": 25000,
+    "num_duplicates": 500,
+    "num_unmatches": 200,
+    "warmup_iterations": 3,
+    "measurement_iterations": 2,
+    "timeout_sec": 300.0
+  },
+  "metrics": [
+    {
+      "scenario_name": "xl",
+      "obligations_count": 10000,
+      "status_events_count": 25000,
+      "duration_ms": 2443.15608398756,
+      "throughput_ops_per_sec": 10232.665920875848,
+      "memory_used_mb": 26.60296630859375,
+      "gc_time_ms": 18.0,
+      "cpu_time_ms": 1937.0,
+      "peak_entities": 10000
+    },
+    {
+      "scenario_name": "xl",
+      "obligations_count": 10000,
+      "status_events_count": 25000,
+      "duration_ms": 2415.977374999784,
+      "throughput_ops_per_sec": 10347.779022559032,
+      "memory_used_mb": 25.24791717529297,
+      "gc_time_ms": 19.0,
+      "cpu_time_ms": 1923.0,
+      "peak_entities": 10000
+    }
+  ],
+  "mean_metrics": {
+    "scenario_name": "xl",
+    "obligations_count": 10000,
+    "status_events_count": 25000,
+    "duration_ms": 2429.566729493672,
+    "throughput_ops_per_sec": 10290.22247171744,
+    "memory_used_mb": 25.92544174194336,
+    "gc_time_ms": 18.5,
+    "cpu_time_ms": 1930.0,
+    "peak_entities": 10000
+  },
+  "timestamp": "2025-08-26T14:43:54.557473"
+}

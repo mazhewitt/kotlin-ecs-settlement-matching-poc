@@ -49,6 +49,16 @@ class FileLineInQueue<T>(
         }
         processedLines = lines.size
     }
+    
+    fun size(): Int {
+        val lines = Files.readAllLines(path, StandardCharsets.UTF_8)
+        return lines.size
+    }
+    
+    fun hasMore(): Boolean {
+        val lines = Files.readAllLines(path, StandardCharsets.UTF_8)
+        return processedLines < lines.size
+    }
 }
 
 class FileLineOutQueue<T>(

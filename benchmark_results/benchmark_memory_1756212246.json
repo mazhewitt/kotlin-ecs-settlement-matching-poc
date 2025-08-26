@@ -1,0 +1,60 @@
+{
+  "config": {
+    "name": "memory",
+    "description": "Memory test: many obligations, few events each",
+    "num_obligations": 5000,
+    "num_status_events": 5500,
+    "num_duplicates": 25,
+    "num_unmatches": 25,
+    "warmup_iterations": 3,
+    "measurement_iterations": 3,
+    "timeout_sec": 60.0
+  },
+  "metrics": [
+    {
+      "scenario_name": "memory",
+      "obligations_count": 5000,
+      "status_events_count": 5500,
+      "duration_ms": 1047.4216660077218,
+      "throughput_ops_per_sec": 5250.989337430273,
+      "memory_used_mb": 12.158950805664062,
+      "gc_time_ms": 6.0,
+      "cpu_time_ms": 547.0,
+      "peak_entities": 5000
+    },
+    {
+      "scenario_name": "memory",
+      "obligations_count": 5000,
+      "status_events_count": 5500,
+      "duration_ms": 996.4737909904215,
+      "throughput_ops_per_sec": 5519.462779380685,
+      "memory_used_mb": 26.116836547851562,
+      "gc_time_ms": 4.0,
+      "cpu_time_ms": 519.0,
+      "peak_entities": 5000
+    },
+    {
+      "scenario_name": "memory",
+      "obligations_count": 5000,
+      "status_events_count": 5500,
+      "duration_ms": 943.0132919951575,
+      "throughput_ops_per_sec": 5832.367419088557,
+      "memory_used_mb": 26.015548706054688,
+      "gc_time_ms": 3.0,
+      "cpu_time_ms": 453.0,
+      "peak_entities": 5000
+    }
+  ],
+  "mean_metrics": {
+    "scenario_name": "memory",
+    "obligations_count": 5000,
+    "status_events_count": 5500,
+    "duration_ms": 995.6362496644336,
+    "throughput_ops_per_sec": 5534.2731786331715,
+    "memory_used_mb": 21.430445353190105,
+    "gc_time_ms": 4.333333333333333,
+    "cpu_time_ms": 506.3333333333333,
+    "peak_entities": 5000
+  },
+  "timestamp": "2025-08-26T14:44:06.645526"
+}

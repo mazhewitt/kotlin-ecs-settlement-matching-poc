@@ -1,0 +1,82 @@
+{
+  "config": {
+    "name": "micro",
+    "description": "Micro benchmark: minimal dataset for baseline",
+    "num_obligations": 10,
+    "num_status_events": 20,
+    "num_duplicates": 2,
+    "num_unmatches": 1,
+    "warmup_iterations": 3,
+    "measurement_iterations": 5,
+    "timeout_sec": 60.0
+  },
+  "metrics": [
+    {
+      "scenario_name": "micro",
+      "obligations_count": 10,
+      "status_events_count": 20,
+      "duration_ms": 503.85320800705813,
+      "throughput_ops_per_sec": 39.69410074634244,
+      "memory_used_mb": 4.0,
+      "gc_time_ms": 0.0,
+      "cpu_time_ms": 35.0,
+      "peak_entities": 10
+    },
+    {
+      "scenario_name": "micro",
+      "obligations_count": 10,
+      "status_events_count": 20,
+      "duration_ms": 505.836290991283,
+      "throughput_ops_per_sec": 39.53848380630455,
+      "memory_used_mb": 4.0,
+      "gc_time_ms": 0.0,
+      "cpu_time_ms": 38.0,
+      "peak_entities": 10
+    },
+    {
+      "scenario_name": "micro",
+      "obligations_count": 10,
+      "status_events_count": 20,
+      "duration_ms": 505.12158298806753,
+      "throughput_ops_per_sec": 39.59442770528469,
+      "memory_used_mb": 4.0,
+      "gc_time_ms": 0.0,
+      "cpu_time_ms": 34.0,
+      "peak_entities": 10
+    },
+    {
+      "scenario_name": "micro",
+      "obligations_count": 10,
+      "status_events_count": 20,
+      "duration_ms": 505.70658399374224,
+      "throughput_ops_per_sec": 39.548624900338424,
+      "memory_used_mb": 4.0,
+      "gc_time_ms": 0.0,
+      "cpu_time_ms": 34.0,
+      "peak_entities": 10
+    },
+    {
+      "scenario_name": "micro",
+      "obligations_count": 10,
+      "status_events_count": 20,
+      "duration_ms": 499.5365420036251,
+      "throughput_ops_per_sec": 40.03711103852511,
+      "memory_used_mb": 4.0,
+      "gc_time_ms": 0.0,
+      "cpu_time_ms": 35.0,
+      "peak_entities": 10
+    }
+  ],
+  "mean_metrics": {
+    "scenario_name": "micro",
+    "obligations_count": 10,
+    "status_events_count": 20,
+    "duration_ms": 504.0108415967552,
+    "throughput_ops_per_sec": 39.682549639359046,
+    "memory_used_mb": 4.0,
+    "gc_time_ms": 0.0,
+    "cpu_time_ms": 35.2,
+    "peak_entities": 10
+  },
+  "timestamp": "2025-08-26T14:43:21.311923"
+}
