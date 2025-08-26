@@ -26,7 +26,12 @@ interface Engine {
         at: Instant
     )
 
-    fun tick()
+    /**
+     * Processes all currently ingested status events and applies matching and lifecycle transitions.
+     *
+     * Note: This is the domain-aligned name for the ECS world "tick". In ECS terms, this would be one tick.
+     */
+    fun processStatusUpdates()
 
     fun outbox(): List<DomainEvent>
 }

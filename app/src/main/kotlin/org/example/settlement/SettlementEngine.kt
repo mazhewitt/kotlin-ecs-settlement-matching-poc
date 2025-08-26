@@ -62,7 +62,11 @@ class SettlementEngine : Engine {
         }
     }
     
-    override fun tick() {
+    /**
+     * Domain-aligned processor for a batch of status updates.
+     * ECS note: this corresponds to a single world "tick" over our systems.
+     */
+    override fun processStatusUpdates() {
         // DedupSystem: Process status events for deduplication and correlation
         dedupSystem()
         
@@ -77,6 +81,11 @@ class SettlementEngine : Engine {
         
         world.update(0f)
     }
+
+    /**
+     * Backwards compat: previous ECS-style name. Prefer processStatusUpdates().
+     */
+    fun tick() = processStatusUpdates()
     
     private fun dedupSystem() {
         statusEvents.forEach { statusEntity ->

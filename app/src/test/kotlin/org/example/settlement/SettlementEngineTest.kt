@@ -78,7 +78,7 @@ class SettlementEngineTest : DescribeSpec({
             )
             
             // Process world tick
-            engine.tick()
+            engine.processStatusUpdates()
             
             // Verify state change and event emission
             val obligation = engine.getObligation(obligationId)
@@ -136,7 +136,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 100L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
             
             // First partial settlement - 30 shares
             engine.ingestStatus(
@@ -149,7 +149,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 30L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
             
             // Check state after first partial
             val afterFirstPartial = engine.getObligation(obligationId)
@@ -173,7 +173,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 20L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
             
             // Verify final quantities and state
             val obligation = engine.getObligation(obligationId)
@@ -236,7 +236,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 1000L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
             
             // Some partial settlements first (300 + 200 = 500)
             engine.ingestStatus(
@@ -249,7 +249,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 300L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
             
             engine.ingestStatus(
                 msgId = "MSG003",
@@ -261,7 +261,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 200L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
             
             // Final SETTLED event for remaining 500 shares
             engine.ingestStatus(
@@ -274,7 +274,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 500L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
             
             // Verify final state - should be completely settled  
             val obligation = engine.getObligation(obligationId)
@@ -353,7 +353,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 1000L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
             
             // Verify state after MATCHED
             val afterMatched = engine.getObligation(obligationId)
@@ -375,7 +375,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 1000L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
             
             // State should be unchanged - still Matched
             val afterDuplicate = engine.getObligation(obligationId)
@@ -421,7 +421,7 @@ class SettlementEngineTest : DescribeSpec({
                 qty = 100L,
                 at = kotlinx.datetime.Clock.System.now()
             )
-            engine.tick()
+            engine.processStatusUpdates()
 
             // Now send an out-of-order lower sequence
             engine.ingestStatus(
@@ -504,13 +504,13 @@ class SettlementEngineTest : DescribeSpec({
                 val t3 = kotlinx.datetime.Instant.parse("2024-03-01T00:00:20Z")
                 val t4 = kotlinx.datetime.Instant.parse("2024-03-01T00:00:30Z")
                 engine.ingestStatus("M1", 1, org.example.settlement.domain.CanonCode.MATCHED, "US2222222222", "ACC222", LocalDate(2024, 3, 1), 100, t1)
-                engine.tick()
+                engine.processStatusUpdates()
                 engine.ingestStatus("M2", 2, org.example.settlement.domain.CanonCode.PARTIAL_SETTLED, "US2222222222", "ACC222", LocalDate(2024, 3, 1), 30, t2)
-                engine.tick()
+                engine.processStatusUpdates()
                 engine.ingestStatus("M3", 3, org.example.settlement.domain.CanonCode.PARTIAL_SETTLED, "US2222222222", "ACC222", LocalDate(2024, 3, 1), 20, t3)
-                engine.tick()
+                engine.processStatusUpdates()
                 engine.ingestStatus("M4", 4, org.example.settlement.domain.CanonCode.SETTLED, "US2222222222", "ACC222", LocalDate(2024, 3, 1), 50, t4)
-                engine.tick()
+                engine.processStatusUpdates()
 
                 val view = engine.getObligation(id).getOrThrow()
                 return engine.outbox() to view
