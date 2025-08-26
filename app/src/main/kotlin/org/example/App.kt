@@ -21,7 +21,9 @@ import kotlin.system.exitProcess
  *  - ./runtime/status.txt (output)
  */
 fun main() {
-    val base = Paths.get("runtime")
+    // Resolve runtime dir at project root even if current working dir is the app module.
+    val cwd = Paths.get("").toAbsolutePath()
+    val base = if (cwd.fileName.toString() == "app") cwd.parent.resolve("runtime") else cwd.resolve("runtime")
     val bankIn = FileLineInQueue(
         base.resolve("bank.txt")
     ) { line ->

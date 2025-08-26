@@ -16,14 +16,15 @@ class FileLineInQueue<T>(
     private val path: Path,
     private val parse: (String) -> T?
 ) : MessageQueue<T> {
-    private var position: Long = 0L
+    // Track processed line count for simplicity and deterministic replay in tests.
+    private var processedLines: Int = 0
 
     init {
         if (!Files.exists(path)) {
             Files.createDirectories(path.parent)
             Files.createFile(path)
         }
-        position = Files.size(path)
+        processedLines = 0 // start from beginning to process prewritten content
     }
 
     override fun offer(msg: T) {
@@ -37,25 +38,16 @@ class FileLineInQueue<T>(
         return result
     }
 
-    override fun isEmpty(): Boolean {
-        // Conservative; we don't track availability without reading.
-        return true
-    }
+    override fun isEmpty(): Boolean = true
 
     override fun drainTo(consumer: (T) -> Unit) {
-        val size = Files.size(path)
-        if (size <= position) return
-        Files.newBufferedReader(path, StandardCharsets.UTF_8).use { reader ->
-            reader.skip(position)
-            var line = reader.readLine()
-            var bytesRead = 0L
-            while (line != null) {
-                bytesRead += (line.toByteArray(StandardCharsets.UTF_8).size + 1) // +1 for newline
-                parse(line)?.let(consumer)
-                line = reader.readLine()
-            }
-            position += bytesRead
+        val lines = Files.readAllLines(path, StandardCharsets.UTF_8)
+        if (processedLines >= lines.size) return
+        for (i in processedLines until lines.size) {
+            val line = lines[i]
+            parse(line)?.let(consumer)
         }
+        processedLines = lines.size
     }
 }
 
