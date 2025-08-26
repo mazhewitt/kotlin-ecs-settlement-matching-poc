@@ -7,7 +7,6 @@ import kotlinx.datetime.LocalDate
 import org.example.settlement.domain.LifecycleState
 import org.example.settlement.domain.CanonCode
 import org.example.settlement.domain.DomainEvent
-import org.example.common.Option
 
 data class IdentityC(
     val obligationId: String,
@@ -44,10 +43,10 @@ data class QuantitiesC(
 }
 
 data class CsdStatusC(
-    var lastCode: Option<CanonCode> = Option.None,
-    var lastMsgId: Option<String> = Option.None,
-    var lastSeq: Option<Long> = Option.None,
-    var lastAt: Option<Instant> = Option.None
+    var lastCode: CanonCode? = null,
+    var lastMsgId: String? = null,
+    var lastSeq: Long? = null,
+    var lastAt: Instant? = null
 ) : Component<CsdStatusC> {
     override fun type() = CsdStatusC
     companion object : ComponentType<CsdStatusC>()
@@ -61,7 +60,7 @@ data class IdempotencyC(
 }
 
 data class CorrelationC(
-    var lastStatusEventId: Option<String> = Option.None
+    var lastStatusEventId: String? = null
 ) : Component<CorrelationC> {
     override fun type() = CorrelationC
     companion object : ComponentType<CorrelationC>()

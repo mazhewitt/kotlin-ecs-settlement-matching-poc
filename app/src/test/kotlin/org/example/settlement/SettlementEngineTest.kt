@@ -5,7 +5,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import kotlinx.datetime.LocalDate
 import org.example.settlement.domain.LifecycleState
-import org.example.common.Option
 
 class SettlementEngineTest : DescribeSpec({
     
@@ -29,8 +28,7 @@ class SettlementEngineTest : DescribeSpec({
             // Verify all initial component states
             val obligation = engine.getObligation(obligationId)
             obligation.fold(
-                ifEmpty = { throw AssertionError("Expected obligation to be found") },
-                ifSome = { view ->
+                onSuccess = { view ->
                     // Identity component
                     view.identity.obligationId shouldBe "OBL001"
                     view.identity.venue shouldBe "NYSE"
@@ -48,7 +46,8 @@ class SettlementEngineTest : DescribeSpec({
                     view.quantities.intendedQty shouldBe 1000L
                     view.quantities.settledQty shouldBe 0L
                     view.quantities.remainingQty shouldBe 1000L
-                }
+                },
+                onFailure = { throw AssertionError("Expected obligation to be found", it) }
             )
         }
         
@@ -84,10 +83,10 @@ class SettlementEngineTest : DescribeSpec({
             // Verify state change and event emission
             val obligation = engine.getObligation(obligationId)
             obligation.fold(
-                ifEmpty = { throw AssertionError("Expected obligation to be found") },
-                ifSome = { view ->
+                onSuccess = { view ->
                     view.lifecycle.state shouldBe LifecycleState.Matched
-                }
+                },
+                onFailure = { throw AssertionError("Expected obligation to be found", it) }
             )
             
             val events = engine.outbox()
@@ -117,13 +116,13 @@ class SettlementEngineTest : DescribeSpec({
             // Verify initial state
             val initialObligation = engine.getObligation(obligationId)
             initialObligation.fold(
-                ifEmpty = { throw AssertionError("Expected obligation to be found") },
-                ifSome = { view ->
+                onSuccess = { view ->
                     view.lifecycle.state shouldBe LifecycleState.New
                     view.quantities.intendedQty shouldBe 100L
                     view.quantities.settledQty shouldBe 0L
                     view.quantities.remainingQty shouldBe 100L
-                }
+                },
+                onFailure = { throw AssertionError("Expected obligation to be found", it) }
             )
             
             // First MATCHED event
@@ -155,12 +154,12 @@ class SettlementEngineTest : DescribeSpec({
             // Check state after first partial
             val afterFirstPartial = engine.getObligation(obligationId)
             afterFirstPartial.fold(
-                ifEmpty = { throw AssertionError("Expected obligation to be found") },
-                ifSome = { view ->
+                onSuccess = { view ->
                     view.lifecycle.state shouldBe LifecycleState.PartiallySettled
                     view.quantities.settledQty shouldBe 30L
                     view.quantities.remainingQty shouldBe 70L
-                }
+                },
+                onFailure = { throw AssertionError("Expected obligation to be found", it) }
             )
             
             // Second partial settlement - 20 shares
@@ -179,13 +178,13 @@ class SettlementEngineTest : DescribeSpec({
             // Verify final quantities and state
             val obligation = engine.getObligation(obligationId)
             obligation.fold(
-                ifEmpty = { throw AssertionError("Expected obligation to be found") },
-                ifSome = { view ->
+                onSuccess = { view ->
                     view.lifecycle.state shouldBe LifecycleState.PartiallySettled
                     view.quantities.intendedQty shouldBe 100L
                     view.quantities.settledQty shouldBe 50L
                     view.quantities.remainingQty shouldBe 50L
-                }
+                },
+                onFailure = { throw AssertionError("Expected obligation to be found", it) }
             )
             
             // Verify we have partial settlement events
@@ -280,13 +279,13 @@ class SettlementEngineTest : DescribeSpec({
             // Verify final state - should be completely settled  
             val obligation = engine.getObligation(obligationId)
             obligation.fold(
-                ifEmpty = { throw AssertionError("Expected obligation to be found") },
-                ifSome = { view ->
+                onSuccess = { view ->
                     view.lifecycle.state shouldBe LifecycleState.Settled
                     view.quantities.intendedQty shouldBe 1000L
                     view.quantities.settledQty shouldBe 1000L
                     view.quantities.remainingQty shouldBe 0L
-                }
+                },
+                onFailure = { throw AssertionError("Expected obligation to be found", it) }
             )
             
             // Verify events emitted (MATCHED + 2 PARTIAL + 1 SETTLED)
@@ -359,10 +358,10 @@ class SettlementEngineTest : DescribeSpec({
             // Verify state after MATCHED
             val afterMatched = engine.getObligation(obligationId)
             afterMatched.fold(
-                ifEmpty = { throw AssertionError("Expected obligation to be found") },
-                ifSome = { view ->
+                onSuccess = { view ->
                     view.lifecycle.state shouldBe LifecycleState.Matched
-                }
+                },
+                onFailure = { throw AssertionError("Expected obligation to be found", it) }
             )
             
             // Send the EXACT SAME message again (same msgId and seq)
@@ -381,10 +380,10 @@ class SettlementEngineTest : DescribeSpec({
             // State should be unchanged - still Matched
             val afterDuplicate = engine.getObligation(obligationId)
             afterDuplicate.fold(
-                ifEmpty = { throw AssertionError("Expected obligation to be found") },
-                ifSome = { view ->
+                onSuccess = { view ->
                     view.lifecycle.state shouldBe LifecycleState.Matched // No state change
-                }
+                },
+                onFailure = { throw AssertionError("Expected obligation to be found", it) }
             )
             
             // Should have DuplicateIgnored event
