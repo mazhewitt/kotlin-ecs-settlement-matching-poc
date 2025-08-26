@@ -3,13 +3,67 @@
  */
 package org.example
 
-class App {
-    val greeting: String
-        get() {
-            return "Hello World!"
-        }
-}
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import org.example.settlement.SettlementEngine
+import org.example.settlement.domain.CanonCode
+import org.example.settlement.matching.*
+import java.nio.file.Paths
+import kotlin.system.exitProcess
 
+/**
+ * Minimal runner to process file-backed queues in a loop.
+ * This allows Python scripts to feed the bank/market inputs and read status indications.
+ *
+ * Files (newline-delimited JSON-ish lines):
+ *  - ./runtime/bank.txt
+ *  - ./runtime/market.txt
+ *  - ./runtime/status.txt (output)
+ */
 fun main() {
-    println(App().greeting)
+    val base = Paths.get("runtime")
+    val bankIn = FileLineInQueue(
+        base.resolve("bank.txt")
+    ) { line ->
+        // very naive CSV: id,venue,isin,account,settleDate,intendedQty
+        val parts = line.split(",")
+        if (parts.size < 6) return@FileLineInQueue null
+        MatchingEngine.BankUpdate(
+            obligationId = parts[0].trim(),
+            venue = parts[1].trim(),
+            isin = parts[2].trim(),
+            account = parts[3].trim(),
+            settleDate = LocalDate.parse(parts[4].trim()),
+            intendedQty = parts[5].trim().toLong()
+        )
+    }
+    val marketIn = FileLineInQueue(
+        base.resolve("market.txt")
+    ) { line ->
+        // naive CSV: msgId,seq,code,isin,account,settleDate,qty,at
+        val p = line.split(",")
+        if (p.size < 8) return@FileLineInQueue null
+        MatchingEngine.MarketUpdate(
+            msgId = p[0].trim(),
+            seq = p[1].trim().toLong(),
+            code = CanonCode.valueOf(p[2].trim()),
+            isin = p[3].trim(),
+            account = p[4].trim(),
+            settleDate = LocalDate.parse(p[5].trim()),
+            qty = p[6].trim().toLong(),
+            at = Instant.parse(p[7].trim())
+        )
+    }
+    val statusOut = FileLineOutQueue(
+        base.resolve("status.txt")
+    ) { s: MatchingEngine.StatusIndication -> s.summary }
+
+    val engine = SettlementEngine()
+    val orchestrator = MatchingEngine(engine, bankIn, marketIn, statusOut)
+
+    println("Matching runner started. Watching ./runtime. Press Ctrl+C to stop.")
+    while (true) {
+        orchestrator.processOnce()
+        Thread.sleep(100) // light polling
+    }
 }
