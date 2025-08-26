@@ -6,6 +6,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import org.example.settlement.domain.LifecycleState
 import org.example.settlement.domain.CanonCode
+import org.example.settlement.domain.DomainEvent
 import org.example.common.Option
 
 data class IdentityC(
@@ -88,4 +89,19 @@ data class CandidateKeyC(
 ) : Component<CandidateKeyC> {
     override fun type() = CandidateKeyC
     companion object : ComponentType<CandidateKeyC>()
+}
+
+// ECS Processing Components
+data class ProcessedStatusC(
+    val obligationEntityId: Int
+) : Component<ProcessedStatusC> {
+    override fun type() = ProcessedStatusC
+    companion object : ComponentType<ProcessedStatusC>()
+}
+
+data class CorrelatedStatusC(
+    val obligationEntityId: Int
+) : Component<CorrelatedStatusC> {
+    override fun type() = CorrelatedStatusC
+    companion object : ComponentType<CorrelatedStatusC>()
 }
