@@ -14,6 +14,7 @@ import org.example.settlement.systems.CorrelateSystem
 import org.example.settlement.systems.LifecycleSystem
 import org.example.settlement.systems.OutboxSystem
 import org.example.settlement.systems.IndexingSystem
+import org.example.settlement.systems.PendingStatusSystem
 
 data class ObligationView(
     val identity: IdentityC,
@@ -26,6 +27,7 @@ class SettlementEngine : Engine {
     private val world = configureWorld {
         systems {
             add(IndexingSystem())
+            add(PendingStatusSystem())
             add(DedupSystem())
             add(CorrelateSystem())
             add(LifecycleSystem())

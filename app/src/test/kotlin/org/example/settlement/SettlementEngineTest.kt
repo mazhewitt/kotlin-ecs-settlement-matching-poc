@@ -528,5 +528,178 @@ class SettlementEngineTest : DescribeSpec({
             view1.quantities.settledQty shouldBe view2.quantities.settledQty
             view1.quantities.remainingQty shouldBe view2.quantities.remainingQty
         }
+        
+        it("statusUpdateArrivingBeforeObligationIsPendedAndProcessedLater") {
+            // TDD: Test for status updates arriving before obligation exists
+            val engine = SettlementEngine()
+            
+            // Status update arrives BEFORE obligation is created
+            engine.ingestStatus(
+                msgId = "STATUS_FIRST", 
+                seq = 1L, 
+                code = org.example.settlement.domain.CanonCode.MATCHED,
+                isin = "US9999999999", 
+                account = "ACC999", 
+                settleDate = LocalDate(2024, 1, 10), 
+                qty = 500L,
+                at = kotlinx.datetime.Instant.parse("2024-01-10T10:00:00Z")
+            )
+            
+            // Process status updates - should create pending status
+            engine.processStatusUpdates()
+            
+            // Verify initial state - should have NoMatch but status is also pending
+            val initialOutbox = engine.outbox()
+            // Should have NoMatch for immediate feedback, but status is also stored as pending
+            val initialNoMatches = initialOutbox.filterIsInstance<org.example.settlement.domain.DomainEvent.NoMatch>()
+            initialNoMatches.size shouldBe 1
+            initialNoMatches.first().msgId shouldBe "STATUS_FIRST"
+            
+            // Should have no state changes yet
+            initialOutbox.filterIsInstance<org.example.settlement.domain.DomainEvent.StateChanged>().size shouldBe 0
+            
+            // Clear outbox to test next phase
+            engine.clearOutbox()
+            
+            // Now create the obligation
+            val obligationId = engine.createObligation(
+                id = "OBL999",
+                venue = "NASDAQ", 
+                isin = "US9999999999",
+                account = "ACC999",
+                settleDate = LocalDate(2024, 1, 10),
+                intendedQty = 500L
+            )
+            
+            // Process again - pending status should now be applied
+            engine.processStatusUpdates()
+            
+            // Verify the pending status was processed
+            val finalOutbox = engine.outbox()
+            val stateChanges = finalOutbox.filterIsInstance<org.example.settlement.domain.DomainEvent.StateChanged>()
+            
+            stateChanges.size shouldBe 1
+            val stateChange = stateChanges.first()
+            stateChange.obligationId shouldBe "OBL999"
+            stateChange.from shouldBe org.example.settlement.domain.LifecycleState.New
+            stateChange.to shouldBe org.example.settlement.domain.LifecycleState.Matched
+            stateChange.msgId shouldBe "STATUS_FIRST"
+            stateChange.seq shouldBe 1L
+            
+            // Verify obligation final state
+            val obligation = engine.getObligation(obligationId).getOrThrow()
+            obligation.lifecycle.state shouldBe org.example.settlement.domain.LifecycleState.Matched
+        }
+        
+        it("multiplePendingStatusesForSameKeyAreProcessedInOrder") {
+            // TDD: Test multiple pending statuses for same matching key
+            val engine = SettlementEngine()
+            
+            // Multiple status updates arrive BEFORE obligation is created
+            engine.ingestStatus("STATUS1", 1L, org.example.settlement.domain.CanonCode.MATCHED, 
+                "US8888888888", "ACC888", LocalDate(2024, 1, 15), 1000L, 
+                kotlinx.datetime.Instant.parse("2024-01-15T10:00:00Z"))
+            engine.processStatusUpdates()
+            
+            engine.ingestStatus("STATUS2", 2L, org.example.settlement.domain.CanonCode.PARTIAL_SETTLED, 
+                "US8888888888", "ACC888", LocalDate(2024, 1, 15), 300L, 
+                kotlinx.datetime.Instant.parse("2024-01-15T10:01:00Z"))
+            engine.processStatusUpdates()
+            
+            engine.ingestStatus("STATUS3", 3L, org.example.settlement.domain.CanonCode.PARTIAL_SETTLED, 
+                "US8888888888", "ACC888", LocalDate(2024, 1, 15), 400L, 
+                kotlinx.datetime.Instant.parse("2024-01-15T10:02:00Z"))
+            engine.processStatusUpdates()
+            
+            // Verify multiple NoMatch events were emitted initially
+            val initialOutbox = engine.outbox()
+            val initialNoMatches = initialOutbox.filterIsInstance<org.example.settlement.domain.DomainEvent.NoMatch>()
+            initialNoMatches.size shouldBe 3
+            
+            // Clear outbox for next phase
+            engine.clearOutbox()
+            
+            // Now create the obligation
+            val obligationId = engine.createObligation("OBL888", "NYSE", 
+                "US8888888888", "ACC888", LocalDate(2024, 1, 15), 1000L)
+            
+            // Process - all pending statuses should be applied in order
+            engine.processStatusUpdates()
+            
+            // Verify all pending statuses were processed
+            val finalOutbox = engine.outbox()
+            val stateChanges = finalOutbox.filterIsInstance<org.example.settlement.domain.DomainEvent.StateChanged>()
+            
+            // Should have 3 state changes: New->Matched, then 2 partial settlements
+            stateChanges.size shouldBe 3
+            
+            // Verify order and content
+            stateChanges[0].apply {
+                msgId shouldBe "STATUS1"
+                seq shouldBe 1L
+                from shouldBe org.example.settlement.domain.LifecycleState.New
+                to shouldBe org.example.settlement.domain.LifecycleState.Matched
+            }
+            
+            stateChanges[1].apply {
+                msgId shouldBe "STATUS2"  
+                seq shouldBe 2L
+                from shouldBe org.example.settlement.domain.LifecycleState.Matched
+                to shouldBe org.example.settlement.domain.LifecycleState.PartiallySettled
+            }
+            
+            stateChanges[2].apply {
+                msgId shouldBe "STATUS3"
+                seq shouldBe 3L  
+                from shouldBe org.example.settlement.domain.LifecycleState.PartiallySettled
+                to shouldBe org.example.settlement.domain.LifecycleState.PartiallySettled
+            }
+            
+            // Verify final obligation state
+            val obligation = engine.getObligation(obligationId).getOrThrow()
+            obligation.lifecycle.state shouldBe org.example.settlement.domain.LifecycleState.PartiallySettled
+            obligation.quantities.settledQty shouldBe 700L // 300 + 400
+            obligation.quantities.remainingQty shouldBe 300L // 1000 - 700
+        }
+        
+        it("pendingStatusesAreCleanedUpAfterProcessing") {
+            // TDD: Test that pending statuses are properly cleaned up
+            val engine = SettlementEngine()
+            
+            // Add pending status before obligation
+            engine.ingestStatus("CLEAN1", 1L, org.example.settlement.domain.CanonCode.MATCHED, 
+                "US7777777777", "ACC777", LocalDate(2024, 1, 20), 250L, 
+                kotlinx.datetime.Instant.parse("2024-01-20T09:00:00Z"))
+            engine.processStatusUpdates()
+            
+            // Verify NoMatch emitted
+            engine.outbox().filterIsInstance<org.example.settlement.domain.DomainEvent.NoMatch>().size shouldBe 1
+            engine.clearOutbox()
+            
+            // Create obligation to process pending
+            val obligationId = engine.createObligation("OBL777", "NASDAQ", 
+                "US7777777777", "ACC777", LocalDate(2024, 1, 20), 250L)
+            engine.processStatusUpdates()
+            
+            // Verify pending status was processed
+            engine.outbox().filterIsInstance<org.example.settlement.domain.DomainEvent.StateChanged>().size shouldBe 1
+            engine.clearOutbox()
+            
+            // Add another status update for same key - should NOT use pending anymore
+            engine.ingestStatus("CLEAN2", 2L, org.example.settlement.domain.CanonCode.PARTIAL_SETTLED, 
+                "US7777777777", "ACC777", LocalDate(2024, 1, 20), 100L, 
+                kotlinx.datetime.Instant.parse("2024-01-20T09:01:00Z"))
+            engine.processStatusUpdates()
+            
+            // Should process immediately (not as pending) since obligation exists
+            val events = engine.outbox().filterIsInstance<org.example.settlement.domain.DomainEvent.StateChanged>()
+            events.size shouldBe 1
+            events.first().msgId shouldBe "CLEAN2"
+            
+            // Verify final state
+            val obligation = engine.getObligation(obligationId).getOrThrow()
+            obligation.lifecycle.state shouldBe org.example.settlement.domain.LifecycleState.PartiallySettled
+            obligation.quantities.settledQty shouldBe 100L
+        }
     }
 })

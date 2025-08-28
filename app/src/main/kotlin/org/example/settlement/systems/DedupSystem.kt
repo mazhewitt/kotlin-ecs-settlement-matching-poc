@@ -12,6 +12,7 @@ class DedupSystem : IteratingSystem(
     
     private val obligations = world.family { all(IdentityC, MatchingKeyC, LifecycleC, QuantitiesC, CsdStatusC, IdempotencyC) }
     private val indexEntities = world.family { all(IndexC) }
+    private val pendingEntities = world.family { all(PendingStatusC) }
     private val outboxEvents = mutableListOf<DomainEvent>()
     
     fun getOutboxEvents(): List<DomainEvent> = outboxEvents.toList()
@@ -85,11 +86,27 @@ class DedupSystem : IteratingSystem(
         } else {
             // No matching obligation found
             val keyString = "${candidateKey.isin}-${candidateKey.account}-${candidateKey.settleDate}"
-            outboxEvents.add(DomainEvent.NoMatch(
-                msgId = statusEvent.msgId,
-                seq = statusEvent.seq,
-                key = keyString
-            ))
+            
+            // Store as pending status for potential future processing
+            val pendingEntity = pendingEntities.firstOrNull()
+            val pending = pendingEntity?.get(PendingStatusC)
+            
+            if (pending != null) {
+                // Store as pending status AND emit NoMatch for immediate feedback
+                pending.addPendingStatus(statusEvent)
+                outboxEvents.add(DomainEvent.NoMatch(
+                    msgId = statusEvent.msgId,
+                    seq = statusEvent.seq,
+                    key = keyString
+                ))
+            } else {
+                // Fallback: just emit NoMatch if no pending storage available
+                outboxEvents.add(DomainEvent.NoMatch(
+                    msgId = statusEvent.msgId,
+                    seq = statusEvent.seq,
+                    key = keyString
+                ))
+            }
             entity.remove()
         }
     }

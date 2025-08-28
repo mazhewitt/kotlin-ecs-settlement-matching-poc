@@ -1,0 +1,82 @@
+{
+  "config": {
+    "name": "medium",
+    "description": "Medium dataset: moderate real-world load",
+    "num_obligations": 1000,
+    "num_status_events": 2500,
+    "num_duplicates": 50,
+    "num_unmatches": 25,
+    "warmup_iterations": 3,
+    "measurement_iterations": 5,
+    "timeout_sec": 60.0
+  },
+  "metrics": [
+    {
+      "scenario_name": "medium",
+      "obligations_count": 1000,
+      "status_events_count": 2500,
+      "duration_ms": 681.4580410136841,
+      "throughput_ops_per_sec": 3668.6044474303862,
+      "memory_used_mb": 2.365264892578125,
+      "gc_time_ms": 2.0,
+      "cpu_time_ms": 176.0,
+      "peak_entities": 1000
+    },
+    {
+      "scenario_name": "medium",
+      "obligations_count": 1000,
+      "status_events_count": 2500,
+      "duration_ms": 674.4810419913847,
+      "throughput_ops_per_sec": 3706.553400847007,
+      "memory_used_mb": 2.36517333984375,
+      "gc_time_ms": 2.0,
+      "cpu_time_ms": 165.0,
+      "peak_entities": 1000
+    },
+    {
+      "scenario_name": "medium",
+      "obligations_count": 1000,
+      "status_events_count": 2500,
+      "duration_ms": 659.203624993097,
+      "throughput_ops_per_sec": 3792.4548731451214,
+      "memory_used_mb": 2.363983154296875,
+      "gc_time_ms": 2.0,
+      "cpu_time_ms": 163.0,
+      "peak_entities": 1000
+    },
+    {
+      "scenario_name": "medium",
+      "obligations_count": 1000,
+      "status_events_count": 2500,
+      "duration_ms": 646.7132919933647,
+      "throughput_ops_per_sec": 3865.700660480085,
+      "memory_used_mb": 2.5507659912109375,
+      "gc_time_ms": 2.0,
+      "cpu_time_ms": 163.0,
+      "peak_entities": 1000
+    },
+    {
+      "scenario_name": "medium",
+      "obligations_count": 1000,
+      "status_events_count": 2500,
+      "duration_ms": 650.9250829985831,
+      "throughput_ops_per_sec": 3840.6877616136385,
+      "memory_used_mb": 2.5615768432617188,
+      "gc_time_ms": 2.0,
+      "cpu_time_ms": 165.0,
+      "peak_entities": 1000
+    }
+  ],
+  "mean_metrics": {
+    "scenario_name": "medium",
+    "obligations_count": 1000,
+    "status_events_count": 2500,
+    "duration_ms": 662.5562165980227,
+    "throughput_ops_per_sec": 3774.8002287032477,
+    "memory_used_mb": 2.4413528442382812,
+    "gc_time_ms": 2.0,
+    "cpu_time_ms": 166.4,
+    "peak_entities": 1000
+  },
+  "timestamp": "2025-08-28T14:14:57.177360"
+}

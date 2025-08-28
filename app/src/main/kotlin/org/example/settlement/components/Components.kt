@@ -142,3 +142,29 @@ data class IndexC(
         return matchingKeyToEntityId[key]
     }
 }
+
+data class PendingStatusC(
+    val pendingByKey: MutableMap<String, MutableList<ParsedStatusC>> = mutableMapOf()
+) : Component<PendingStatusC> {
+    override fun type() = PendingStatusC
+    companion object : ComponentType<PendingStatusC>()
+    
+    fun createKey(isin: String, account: String, settleDate: LocalDate): String {
+        return "$isin-$account-$settleDate"
+    }
+    
+    fun addPendingStatus(status: ParsedStatusC) {
+        val key = createKey(status.isin, status.account, status.settleDate)
+        pendingByKey.getOrPut(key) { mutableListOf() }.add(status)
+    }
+    
+    fun getPendingStatuses(isin: String, account: String, settleDate: LocalDate): List<ParsedStatusC> {
+        val key = createKey(isin, account, settleDate)
+        return pendingByKey[key]?.toList() ?: emptyList()
+    }
+    
+    fun removePendingStatuses(isin: String, account: String, settleDate: LocalDate) {
+        val key = createKey(isin, account, settleDate)
+        pendingByKey.remove(key)
+    }
+}
