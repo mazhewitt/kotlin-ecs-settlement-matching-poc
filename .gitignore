@@ -26,3 +26,6 @@ build/
 
 # Runtime IO files
 runtime/
+
+# Benchmark results
+benchmark_results/*
