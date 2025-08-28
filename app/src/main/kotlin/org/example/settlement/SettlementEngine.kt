@@ -115,14 +115,8 @@ class SettlementEngine : Engine {
     }
     
     private fun findEntity(entityId: Int): Entity? {
-        var foundEntity: Entity? = null
-        obligations.forEach { entity ->
-            if (entity.id == entityId) {
-                foundEntity = entity
-                return@forEach
-            }
-        }
-        return foundEntity
+        // Use more efficient find instead of forEach for O(n) but cleaner code
+        return obligations.find { entity -> entity.id == entityId }
     }
     
     fun getObligation(entityId: Int): Result<ObligationView> {

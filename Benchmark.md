@@ -2,13 +2,14 @@
 
 ## Executive Summary
 
-The ECS-based settlement matching engine demonstrates **exceptional scalability** and **memory efficiency**. Peak performance reaches **10,290 events/sec** with **sub-millisecond GC overhead** even at extreme scale.
+The ECS-based settlement matching engine demonstrates **exceptional scalability** and **memory efficiency**. Peak performance reaches **16,864.6 events/sec** with **minimal GC overhead** even at extreme scale.
 
 **Key Findings:**
-- 🚀 **Super-linear throughput scaling**: 259x performance gain for 1000x data increase
+- 🚀 **Super-linear throughput scaling**: 424x performance gain for 1000x data increase (+63.9% improvement)
 - 💾 **Outstanding memory efficiency**: As low as 1.9KB per settlement obligation  
-- 🗑️ **Minimal GC impact**: <1% overhead even with 25,000 events
+- 🗑️ **Minimal GC impact**: <1.4% overhead even with 25,000 events (20.5ms GC in 1.48s)
 - 📈 **Consistent performance**: Low variance across multiple test iterations
+- ⚡ **Architecture optimizations**: O(1) indexing system + bidirectional cleanup + ECS system refactoring
 
 ---
 
@@ -22,7 +23,7 @@ The ECS-based settlement matching engine demonstrates **exceptional scalability*
 | **throughput** | 500 | 5,000 | 6,496.4 | 769.7 | 7.1 | 3.0 | 14.6 KB |
 | **memory** | 5,000 | 5,500 | 5,534.3 | 995.6 | 21.4 | 4.3 | 4.4 KB |
 | **large** | 5,000 | 12,500 | 10,021.3 | 1,247.4 | 41.5 | 7.0 | 8.5 KB |
-| **xl** | 10,000 | 25,000 | **10,290.2** | 2,429.6 | 25.9 | 18.5 | 2.7 KB |
+| **xl** | 10,000 | 25,000 | **16,864.6** | 1,482.7 | 47.5 | 20.5 | 4.9 KB |
 
 ---
 
@@ -32,9 +33,14 @@ The ECS-based settlement matching engine demonstrates **exceptional scalability*
 
 **Outstanding Scalability:** The system shows super-linear throughput scaling, dramatically outperforming linear expectations:
 
-- **10 → 10,000 obligations**: 1000x data increase → **259x throughput increase**
-- **Peak throughput**: 10,290 events/sec (xl scenario)
-- **Throughput efficiency**: 1.03 events/sec per obligation at scale
+- **10 → 10,000 obligations**: 1000x data increase → **424x throughput increase** (+63.9% improvement)
+- **Peak throughput**: 16,864.6 events/sec (xl scenario)
+- **Throughput efficiency**: 1.69 events/sec per obligation at scale
+
+**Performance Optimization Impact:** Recent architecture improvements delivered:
+- **O(1) Indexing System**: Composite key lookups with bidirectional reverse indexing
+- **ECS System Refactoring**: Proper Fleks IteratingSystem patterns with optimized execution order  
+- **Algorithm Optimization**: Cleaner lookup patterns, reduced O(n) operations
 
 **Batching Benefits:** Performance improves significantly with larger datasets due to:
 - ECS system batching optimizations

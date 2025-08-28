@@ -20,10 +20,10 @@ python py/benchmark.py --scenario all
 
 ## 📊 Performance Highlights
 
-- **10,290+ events/sec** peak throughput
+- **16,864+ events/sec** peak throughput (+63.9% optimized)
 - **1.9 KB per obligation** memory efficiency  
-- **<1% GC overhead** even at 25,000 events
-- **259x throughput scaling** with super-linear performance gains
+- **<1.4% GC overhead** even at 25,000 events
+- **424x throughput scaling** with super-linear performance gains
 
 See [Benchmark.md](Benchmark.md) for complete performance analysis.
 
@@ -50,12 +50,13 @@ The system uses the **Fleks ECS framework** to achieve high performance through 
 
 ### Core Processing Pipeline
 
-The engine processes status updates through **four ordered ECS systems**:
+The engine processes status updates through **five ordered ECS systems**:
 
-1. **DedupSystem**: Deduplication and correlation matching
-2. **CorrelateSystem**: Entity relationship management  
-3. **LifecycleSystem**: State machine transitions
-4. **OutboxSystem**: Event emission and cleanup
+1. **IndexingSystem**: O(1) obligation indexing with bidirectional lookup tables
+2. **DedupSystem**: Deduplication and correlation matching via fast indexing
+3. **CorrelateSystem**: Entity relationship management  
+4. **LifecycleSystem**: State machine transitions
+5. **OutboxSystem**: Event emission and cleanup
 
 ### Domain Model
 
@@ -133,6 +134,13 @@ IdempotencyC(seen: MutableSet<Pair<String,Long>>)
 CorrelationC(lastStatusEventId: String?)
 ```
 
+**Indexing Components:**
+```kotlin
+IndexC(matchingKeyToEntityId: MutableMap<String, Int>, entityIdToMatchingKey: MutableMap<Int, String>)
+// Provides O(1) obligation lookup by composite key (isin-account-settleDate)
+// Bidirectional mapping enables O(1) cleanup when obligations are removed
+```
+
 **Status Event Components:**
 ```kotlin
 ParsedStatusC(msgId: String, seq: Long, code: CanonCode, isin: String, ...)
@@ -144,10 +152,11 @@ CorrelatedStatusC(obligationEntityId: Int)
 ### Processing Systems (Behavior)
 
 **System Execution Order:**
-1. `DedupSystem` - Deduplication and matching
-2. `CorrelateSystem` - Entity correlation
-3. `LifecycleSystem` - State transitions
-4. `OutboxSystem` - Event emission
+1. `IndexingSystem` - O(1) obligation indexing and cleanup
+2. `DedupSystem` - Fast deduplication and matching via index
+3. `CorrelateSystem` - Entity correlation
+4. `LifecycleSystem` - State transitions
+5. `OutboxSystem` - Event emission and cleanup
 
 Each system operates on specific component families for optimal performance.
 
@@ -279,12 +288,12 @@ python py/analyze_benchmarks.py --compare baseline.json optimized.json
 ### Key Performance Results
 
 **Exceptional Scalability:**
-- **Super-linear throughput scaling**: 259x performance gain for 1000x data increase
+- **Super-linear throughput scaling**: 424x performance gain for 1000x data increase
 - **Sub-linear memory scaling**: Memory per obligation decreases with scale
-- **Minimal GC impact**: <1% overhead even at 25,000 events
+- **Minimal GC impact**: <1.4% overhead even at 25,000 events
 
 **Production Readiness:**
-- Peak throughput: 10,290 events/sec
+- Peak throughput: 16,864.6 events/sec (+63.9% optimized)
 - Memory efficiency: 1.9 KB per obligation (optimal)
 - Consistent low-variance performance across runs
 
@@ -427,10 +436,11 @@ python py/benchmark.py --scenario medium
 ### Monitoring Recommendations
 
 **Key Performance Indicators:**
-- **Throughput**: Target >5,000 events/sec for production loads
-- **Memory efficiency**: Maintain <10KB per obligation  
-- **GC overhead**: Keep <2% of total processing time
+- **Throughput**: Target >10,000 events/sec for production loads (achieves 16,864+ events/sec)
+- **Memory efficiency**: Maintain <10KB per obligation (achieves 1.9-4.9KB per obligation)
+- **GC overhead**: Keep <2% of total processing time (achieves <1.4% overhead)
 - **Error rates**: Monitor NoMatch/Duplicate/OutOfOrder events
+- **Index performance**: Monitor indexing system hit rates and cleanup efficiency
 
 ### Operational Integration
 

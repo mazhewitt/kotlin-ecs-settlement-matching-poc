@@ -44,11 +44,8 @@ class IndexingSystem : IntervalSystem() {
         val idsToRemove = trackedObligations - currentObligationIds
         
         idsToRemove.forEach { entityId ->
-            // Find and remove from index - we need to search by entity ID
-            val entryToRemove = index.matchingKeyToEntityId.entries.find { it.value == entityId }
-            entryToRemove?.let { entry ->
-                index.matchingKeyToEntityId.remove(entry.key)
-            }
+            // O(1) removal using reverse index
+            index.removeObligationByEntityId(entityId)
             trackedObligations.remove(entityId)
         }
     }

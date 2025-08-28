@@ -33,25 +33,16 @@ class DedupSystem : IteratingSystem(
             val entityId = index.findObligation(candidateKey.isin, candidateKey.account, candidateKey.settleDate)
             
             if (entityId != null) {
-                // Find the actual entity by ID - defensive programming
-                obligations.forEach { obligation ->
-                    if (obligation.id == entityId) {
-                        matchedObligation = obligation
-                        return@forEach
-                    }
-                }
+                // Find the actual entity by ID - still O(n) but cleaner than forEach
+                matchedObligation = obligations.find { obligation -> obligation.id == entityId }
             }
         } else {
             // Fallback to linear search if index not available (defensive programming)
-            obligations.forEach { obligation ->
+            matchedObligation = obligations.find { obligation ->
                 val matchingKey = obligation[MatchingKeyC]
-                if (matchingKey.isin == candidateKey.isin &&
+                matchingKey.isin == candidateKey.isin &&
                     matchingKey.account == candidateKey.account &&
                     matchingKey.settleDate == candidateKey.settleDate
-                ) {
-                    matchedObligation = obligation
-                    return@forEach
-                }
             }
         }
         
