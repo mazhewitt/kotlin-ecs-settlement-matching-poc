@@ -8,6 +8,9 @@ import org.example.settlement.components.*
 class CorrelateSystem : IteratingSystem(
     family { all(ParsedStatusC, ProcessedStatusC) }
 ) {
+    
+    // Cache the family reference for better performance
+    private val obligations = world.family { all(IdentityC, MatchingKeyC, LifecycleC, QuantitiesC, CsdStatusC, IdempotencyC, CorrelationC) }
 
     override fun onTickEntity(entity: Entity) {
         val statusEvent = entity[ParsedStatusC]
@@ -34,14 +37,7 @@ class CorrelateSystem : IteratingSystem(
     }
     
     private fun findEntity(entityId: Int): Entity? {
-        val obligations = world.family { all(IdentityC, MatchingKeyC, LifecycleC, QuantitiesC, CsdStatusC, IdempotencyC, CorrelationC) }
-        var foundEntity: Entity? = null
-        obligations.forEach { entity ->
-            if (entity.id == entityId) {
-                foundEntity = entity
-                return@forEach
-            }
-        }
-        return foundEntity
+        // Use cached family reference and find for better performance
+        return obligations.find { entity -> entity.id == entityId }
     }
 }

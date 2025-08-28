@@ -1,0 +1,60 @@
+{
+  "config": {
+    "name": "large",
+    "description": "Large dataset: high-volume processing test",
+    "num_obligations": 5000,
+    "num_status_events": 12500,
+    "num_duplicates": 250,
+    "num_unmatches": 100,
+    "warmup_iterations": 3,
+    "measurement_iterations": 3,
+    "timeout_sec": 120.0
+  },
+  "metrics": [
+    {
+      "scenario_name": "large",
+      "obligations_count": 5000,
+      "status_events_count": 12500,
+      "duration_ms": 1119.6806670050137,
+      "throughput_ops_per_sec": 11163.89732211392,
+      "memory_used_mb": 57.47521209716797,
+      "gc_time_ms": 5.0,
+      "cpu_time_ms": 643.0,
+      "peak_entities": 5000
+    },
+    {
+      "scenario_name": "large",
+      "obligations_count": 5000,
+      "status_events_count": 12500,
+      "duration_ms": 1098.0500829900848,
+      "throughput_ops_per_sec": 11383.815905702066,
+      "memory_used_mb": 46.689125061035156,
+      "gc_time_ms": 8.0,
+      "cpu_time_ms": 605.0,
+      "peak_entities": 5000
+    },
+    {
+      "scenario_name": "large",
+      "obligations_count": 5000,
+      "status_events_count": 12500,
+      "duration_ms": 1165.3751249978086,
+      "throughput_ops_per_sec": 10726.159956454798,
+      "memory_used_mb": 57.65741729736328,
+      "gc_time_ms": 5.0,
+      "cpu_time_ms": 669.0,
+      "peak_entities": 5000
+    }
+  ],
+  "mean_metrics": {
+    "scenario_name": "large",
+    "obligations_count": 5000,
+    "status_events_count": 12500,
+    "duration_ms": 1127.701958330969,
+    "throughput_ops_per_sec": 11091.291061423595,
+    "memory_used_mb": 53.94058481852213,
+    "gc_time_ms": 6.0,
+    "cpu_time_ms": 639.0,
+    "peak_entities": 5000
+  },
+  "timestamp": "2025-08-28T11:42:10.106027"
+}

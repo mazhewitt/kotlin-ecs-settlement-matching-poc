@@ -11,6 +11,7 @@ class DedupSystem : IteratingSystem(
 ) {
     
     private val obligations = world.family { all(IdentityC, MatchingKeyC, LifecycleC, QuantitiesC, CsdStatusC, IdempotencyC) }
+    private val indexEntities = world.family { all(IndexC) }
     private val outboxEvents = mutableListOf<DomainEvent>()
     
     fun getOutboxEvents(): List<DomainEvent> = outboxEvents.toList()
@@ -20,16 +21,37 @@ class DedupSystem : IteratingSystem(
         val statusEvent = entity[ParsedStatusC]
         val candidateKey = entity[CandidateKeyC]
         
-        // Find matching obligation
+        // Find matching obligation using index for O(1) lookup
         var matchedObligation: Entity? = null
-        obligations.forEach { obligation ->
-            val matchingKey = obligation[MatchingKeyC]
-            if (matchingKey.isin == candidateKey.isin &&
-                matchingKey.account == candidateKey.account &&
-                matchingKey.settleDate == candidateKey.settleDate
-            ) {
-                matchedObligation = obligation
-                return@forEach
+        
+        // Get the index component
+        val indexEntity = indexEntities.firstOrNull()
+        val index = indexEntity?.get(IndexC)
+        
+        if (index != null) {
+            // O(1) lookup using the index
+            val entityId = index.findObligation(candidateKey.isin, candidateKey.account, candidateKey.settleDate)
+            
+            if (entityId != null) {
+                // Find the actual entity by ID - defensive programming
+                obligations.forEach { obligation ->
+                    if (obligation.id == entityId) {
+                        matchedObligation = obligation
+                        return@forEach
+                    }
+                }
+            }
+        } else {
+            // Fallback to linear search if index not available (defensive programming)
+            obligations.forEach { obligation ->
+                val matchingKey = obligation[MatchingKeyC]
+                if (matchingKey.isin == candidateKey.isin &&
+                    matchingKey.account == candidateKey.account &&
+                    matchingKey.settleDate == candidateKey.settleDate
+                ) {
+                    matchedObligation = obligation
+                    return@forEach
+                }
             }
         }
         

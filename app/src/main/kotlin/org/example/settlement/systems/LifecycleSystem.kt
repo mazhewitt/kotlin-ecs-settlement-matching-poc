@@ -14,6 +14,9 @@ class LifecycleSystem : IteratingSystem(
     
     private val outboxEvents = mutableListOf<DomainEvent>()
     
+    // Cache the family reference for better performance
+    private val obligations = world.family { all(IdentityC, MatchingKeyC, LifecycleC, QuantitiesC, CsdStatusC, IdempotencyC, CorrelationC) }
+    
     fun getOutboxEvents(): List<DomainEvent> = outboxEvents.toList()
     fun clearOutbox() = outboxEvents.clear()
 
@@ -76,14 +79,7 @@ class LifecycleSystem : IteratingSystem(
     }
     
     private fun findEntity(entityId: Int): Entity? {
-        val obligations = world.family { all(IdentityC, MatchingKeyC, LifecycleC, QuantitiesC, CsdStatusC, IdempotencyC, CorrelationC) }
-        var foundEntity: Entity? = null
-        obligations.forEach { entity ->
-            if (entity.id == entityId) {
-                foundEntity = entity
-                return@forEach
-            }
-        }
-        return foundEntity
+        // Use cached family reference and find for better performance
+        return obligations.find { entity -> entity.id == entityId }
     }
 }

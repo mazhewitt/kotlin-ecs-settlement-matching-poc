@@ -104,3 +104,29 @@ data class CorrelatedStatusC(
     override fun type() = CorrelatedStatusC
     companion object : ComponentType<CorrelatedStatusC>()
 }
+
+data class IndexC(
+    val matchingKeyToEntityId: MutableMap<String, Int> = mutableMapOf()
+) : Component<IndexC> {
+    override fun type() = IndexC
+    companion object : ComponentType<IndexC>()
+    
+    fun createKey(isin: String, account: String, settleDate: LocalDate): String {
+        return "$isin-$account-$settleDate"
+    }
+    
+    fun addObligation(isin: String, account: String, settleDate: LocalDate, entityId: Int) {
+        val key = createKey(isin, account, settleDate)
+        matchingKeyToEntityId[key] = entityId
+    }
+    
+    fun removeObligation(isin: String, account: String, settleDate: LocalDate) {
+        val key = createKey(isin, account, settleDate)
+        matchingKeyToEntityId.remove(key)
+    }
+    
+    fun findObligation(isin: String, account: String, settleDate: LocalDate): Int? {
+        val key = createKey(isin, account, settleDate)
+        return matchingKeyToEntityId[key]
+    }
+}

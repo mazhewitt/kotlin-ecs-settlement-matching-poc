@@ -13,6 +13,7 @@ import org.example.settlement.systems.DedupSystem
 import org.example.settlement.systems.CorrelateSystem
 import org.example.settlement.systems.LifecycleSystem
 import org.example.settlement.systems.OutboxSystem
+import org.example.settlement.systems.IndexingSystem
 
 data class ObligationView(
     val identity: IdentityC,
@@ -24,6 +25,7 @@ data class ObligationView(
 class SettlementEngine : Engine {
     private val world = configureWorld {
         systems {
+            add(IndexingSystem())
             add(DedupSystem())
             add(CorrelateSystem())
             add(LifecycleSystem())
@@ -34,6 +36,7 @@ class SettlementEngine : Engine {
     private val outboxEvents = mutableListOf<DomainEvent>()
     
     // Get system references for accessing outbox
+    private val indexingSystem = world.system<IndexingSystem>()
     private val dedupSystem = world.system<DedupSystem>()
     private val lifecycleSystem = world.system<LifecycleSystem>()
     
