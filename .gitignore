@@ -28,4 +28,4 @@ build/
 runtime/
 
 # Benchmark results
-benchmark_results/*
+*/benchmark_results/*
